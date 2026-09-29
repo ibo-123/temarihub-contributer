@@ -1,17 +1,20 @@
-import { useEffect, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
-import { TemplateForm } from '../../components/TemplateForm';
-import type { TemplateFormValues } from '../../utils/templateInput';
-import { buildTemplateInput, fieldsToDrafts } from '../../utils/templateInput';
-import { getTemplate, updateTemplate } from '../../services/templateService';
-import type { Template } from '../../types';
+import { useEffect, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { TemplateForm } from "../../components/TemplateForm";
+import type { TemplateFormValues } from "../../utils/templateInput";
+import { buildTemplateInput, fieldsToDrafts } from "../../utils/templateInput";
+import { getTemplate, updateTemplate } from "../../services/templateService";
+import type { Template } from "../../types";
 
 function BackToTemplates({ message }: { message: string }) {
   return (
-    <section className="rounded-lg bg-white p-6 shadow-sm">
-      <p className="text-red-600">{message}</p>
-      <Link to="/admin/templates" className="mt-4 inline-block text-sm text-slate-900 underline">
-        Back to templates
+    <section className="rounded-3xl border border-white/60 bg-white/70 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-sm">
+      <p className="text-red-500">{message}</p>
+      <Link
+        to="/admin/templates"
+        className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-slate-700 transition-colors hover:text-slate-900"
+      >
+        ← Back to templates
       </Link>
     </section>
   );
@@ -23,8 +26,8 @@ export function EditTemplatePage() {
   const [template, setTemplate] = useState<Template | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState('');
-  const [loadError, setLoadError] = useState('');
+  const [error, setError] = useState("");
+  const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
     if (!id) {
@@ -41,7 +44,7 @@ export function EditTemplatePage() {
       })
       .catch((err: unknown) => {
         if (!cancelled) {
-          setLoadError(err instanceof Error ? err.message : 'Unable to load template');
+          setLoadError(err instanceof Error ? err.message : "Unable to load template");
         }
       })
       .finally(() => {
@@ -61,19 +64,19 @@ export function EditTemplatePage() {
     }
 
     const input = buildTemplateInput(values);
-    if (typeof input === 'string') {
+    if (typeof input === "string") {
       setError(input);
       return;
     }
 
-    setError('');
+    setError("");
     setSubmitting(true);
 
     try {
       const data = await updateTemplate(id, input);
       navigate(`/admin/templates/${data.template.id}`, { replace: true });
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Unable to update template');
+      setError(err instanceof Error ? err.message : "Unable to update template");
     } finally {
       setSubmitting(false);
     }
@@ -84,11 +87,16 @@ export function EditTemplatePage() {
   }
 
   if (loading) {
-    return <p className="text-slate-600">Loading template...</p>;
+    return (
+      <div className="flex items-center gap-3 rounded-3xl border border-white/60 bg-white/70 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-sm">
+        <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-slate-700" />
+        <p className="text-sm text-slate-500">Loading template…</p>
+      </div>
+    );
   }
 
   if (loadError || !template) {
-    return <BackToTemplates message={loadError || 'Template not found'} />;
+    return <BackToTemplates message={loadError || "Template not found"} />;
   }
 
   const initialValues: TemplateFormValues = {
@@ -101,8 +109,29 @@ export function EditTemplatePage() {
   };
 
   return (
-    <div>
-      <h2 className="mb-6 text-2xl font-semibold text-slate-900">Edit Template</h2>
+    <div className="relative">
+      {/* Ambient background glow */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -top-24 left-1/2 -z-10 h-72 w-[36rem] -translate-x-1/2 rounded-full bg-gradient-to-r from-violet-200/40 via-sky-200/40 to-emerald-200/40 blur-3xl"
+      />
+
+      {/* Header */}
+      <div className="mb-6">
+        <Link
+          to={`/admin/templates/${id}`}
+          className="inline-flex items-center gap-1 text-sm text-slate-500 transition-colors hover:text-slate-900"
+        >
+          ← Back to template
+        </Link>
+        <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
+          Edit template
+        </h2>
+        <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-500">
+          Update the structure contributors will fill in. Jobs already created keep their own copy.
+        </p>
+      </div>
+
       <TemplateForm
         mode="edit"
         initialValues={initialValues}
