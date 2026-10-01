@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
-const { SUBMISSION_STATUSES } = require('../constants/templates');
+const { SUBMISSION_STATUSES, INPUT_TYPES, PROCESSING_STATUSES } = require('../constants/templates');
+const { SUBJECTS } = require('../constants/contributors');
 
 const fieldSchema = new mongoose.Schema(
   {
@@ -40,16 +41,81 @@ const fileSchema = new mongoose.Schema({
   storageKey: { type: String, required: true },
   mimeType: { type: String, required: true },
   size: { type: Number, required: true },
+  order: { type: Number, default: 0 },
   uploadedAt: { type: Date, default: Date.now },
 });
 
+const topicResourceSchema = new mongoose.Schema(
+  {
+    subject: {
+      type: String,
+      enum: { values: SUBJECTS, message: 'Invalid subject' },
+      required: false,
+    },
+    topic: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    resourceName: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    pageFrom: {
+      type: Number,
+      default: null,
+    },
+    pageTo: {
+      type: Number,
+      default: null,
+    },
+    prerequisites: {
+      type: [String],
+      default: [],
+    },
+    inputType: {
+      type: String,
+      enum: INPUT_TYPES,
+      default: 'TEXT',
+    },
+    rawContent: {
+      type: String,
+      default: '',
+    },
+    extractedContent: {
+      type: String,
+      default: '',
+    },
+    normalizedContent: {
+      type: String,
+      default: '',
+    },
+    processingStatus: {
+      type: String,
+      enum: PROCESSING_STATUSES,
+      default: 'PENDING',
+    },
+    processingError: {
+      type: String,
+      default: '',
+    },
+  },
+  { _id: false },
+);
+
 const submissionSchema = new mongoose.Schema(
   {
+    submissionType: {
+      type: String,
+      enum: ['TEMPLATE', 'TOPIC_RESOURCE'],
+      default: 'TEMPLATE',
+    },
     job: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Job',
-      required: true,
-      unique: true,
+      required: false,
+      default: null,
     },
     contributor: {
       type: mongoose.Schema.Types.ObjectId,
@@ -59,11 +125,17 @@ const submissionSchema = new mongoose.Schema(
     template: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Template',
-      required: true,
+      required: false,
+      default: null,
     },
     templateSnapshot: {
       type: snapshotSchema,
-      required: true,
+      required: false,
+      default: null,
+    },
+    topicResource: {
+      type: topicResourceSchema,
+      default: null,
     },
     items: {
       type: [itemSchema],
@@ -107,6 +179,7 @@ const submissionSchema = new mongoose.Schema(
           {
             number: { type: Number, required: true },
             items: { type: [itemSchema], default: [] },
+            topicResource: { type: mongoose.Schema.Types.Mixed, default: null },
             notes: { type: String, default: '' },
             files: { type: [fileSchema], default: [] },
             submittedAt: { type: Date, required: true },
@@ -143,5 +216,13 @@ const submissionSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
+submissionSchema.index(
+  { job: 1 },
+  { unique: true, partialFilterExpression: { job: { $type: 'objectId' } } },
+);
+submissionSchema.index({ contributor: 1, status: 1 });
+submissionSchema.index({ submissionType: 1 });
+
 module.exports = mongoose.model('Submission', submissionSchema);
 module.exports.snapshotSchema = snapshotSchema;
+module.exports.topicResourceSchema = topicResourceSchema;

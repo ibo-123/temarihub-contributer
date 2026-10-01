@@ -5,7 +5,14 @@ import type {
 } from '../constants/contributors';
 
 import type { Difficulty, JobStatus } from '../constants/jobs';
-import type { FieldType, ReviewDecision, SubmissionStatus, TemplateType } from '../constants/templates';
+import type {
+  FieldType,
+  InputType,
+  ProcessingStatus,
+  ReviewDecision,
+  SubmissionStatus,
+  TemplateType,
+} from '../constants/templates';
 
 export type Role = 'ADMIN' | 'CONTRIBUTOR';
 
@@ -88,6 +95,14 @@ export type TemplateWriteInput = {
   isActive: boolean;
 };
 
+export type JobSubmissionProgress = {
+  required: number;
+  submitted: number;
+  percentage: number;
+  submissionStatus: SubmissionStatus | null;
+  submissionId: string | null;
+};
+
 export type ContributorJob = {
   id: string;
   title: string;
@@ -101,6 +116,9 @@ export type ContributorJob = {
   instructions: string;
   status: JobStatus;
   template: JobTemplateSummary | null;
+  jobType?: string;
+  assignedDate?: string;
+  submissionProgress?: JobSubmissionProgress;
   createdAt: string;
   updatedAt: string;
 };
@@ -136,6 +154,7 @@ export type SubmissionFile = {
   originalName: string;
   mimeType: string;
   size: number;
+  order?: number;
   uploadedAt: string;
 };
 
@@ -144,9 +163,33 @@ export type SubmissionItem = {
   values: Record<string, string | number | null>;
 };
 
+export type TopicResource = {
+  subject: Subject;
+  topic: string;
+  resourceName: string;
+  pageFrom: number;
+  pageTo: number;
+  prerequisites: string[];
+  inputType: InputType;
+  rawContent?: string;
+  extractedContent?: string;
+  normalizedContent?: string;
+  processingStatus: ProcessingStatus;
+  processingError?: string;
+};
+
+export type TopicItem = {
+  id: string;
+  name: string;
+  subject: Subject;
+  prerequisites: string[];
+  isCurriculumStandard: boolean;
+};
+
 export type SubmissionVersion = {
   number: number;
   notes: string;
+  topicResource?: TopicResource | null;
   items: SubmissionItem[];
   files: SubmissionFile[];
   submittedAt: string;
@@ -163,7 +206,8 @@ export type SubmissionReview = {
 
 export type Submission = {
   id: string;
-  job: {
+  submissionType?: 'TEMPLATE' | 'TOPIC_RESOURCE';
+  job?: {
     id: string;
     title?: string;
     subject?: Subject;
@@ -172,8 +216,9 @@ export type Submission = {
     difficulty?: Difficulty;
     deadline?: string;
     status?: JobStatus;
-  };
-  template: JobTemplateSummary;
+  } | null;
+  template?: JobTemplateSummary | null;
+  topicResource?: TopicResource | null;
   items: SubmissionItem[];
   files: SubmissionFile[];
   notes: string;
@@ -187,6 +232,34 @@ export type Submission = {
   createdAt: string;
   updatedAt: string;
   contributor?: { id: string; name: string; email: string };
+};
+
+export type ContributorDashboardData = {
+  message: string;
+  name: string;
+  role: string;
+  metrics: {
+    assignedJobs: number;
+    activeJobs: number;
+    pendingSubmissions: number;
+    submissionsRequiringRevision: number;
+    approvedSubmissions: number;
+  };
+  upcomingDeadlines: Array<{
+    id: string;
+    title: string;
+    subject: Subject;
+    topic: string;
+    deadline: string;
+    status: JobStatus;
+  }>;
+  recentActivity: Array<{
+    id: string;
+    action: string;
+    description: string;
+    createdAt: string;
+    actor?: { name: string } | null;
+  }>;
 };
 
 export type NotificationItem = {

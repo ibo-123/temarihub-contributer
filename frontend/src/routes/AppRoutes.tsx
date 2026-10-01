@@ -27,6 +27,7 @@ import { ContributorJobDetailsPage } from '../pages/contributor/ContributorJobDe
 import { ContributorSubmissionsPage } from '../pages/contributor/ContributorSubmissionsPage';
 import { MyJobsPage } from '../pages/contributor/MyJobsPage';
 import { SubmissionPage } from '../pages/contributor/SubmissionPage';
+import { TopicResourceSubmissionPage } from '../pages/contributor/TopicResourceSubmissionPage';
 
 function NotificationsRedirect() {
   const { user, loading } = useAuth();
@@ -112,6 +113,8 @@ export function AppRoutes() {
         <Route path="jobs/:jobId/submission" element={<SubmissionPage />} />
         <Route path="jobs/:id" element={<ContributorJobDetailsPage />} />
         <Route path="submissions" element={<ContributorSubmissionsPage />} />
+        <Route path="submit-resource" element={<TopicResourceSubmissionPage />} />
+        <Route path="resources/:submissionId" element={<TopicResourceSubmissionPage />} />
         <Route path="notifications" element={<NotificationsPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

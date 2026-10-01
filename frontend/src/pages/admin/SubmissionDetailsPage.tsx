@@ -194,8 +194,8 @@ export function SubmissionDetailsPage() {
             ← Submissions
           </Link>
         }
-        title={submission.job.title ?? "Submission"}
-        description={`${submission.contributor?.name ?? "Contributor"} · ${submission.template.name} · Version ${submission.currentVersion || "—"}`}
+        title={submission.topicResource?.resourceName || submission.job?.title || "Submission"}
+        description={`${submission.contributor?.name ?? "Contributor"} · ${submission.submissionType === 'TOPIC_RESOURCE' ? 'Topic Resource' : (submission.template?.name || "Template")} · Version ${submission.currentVersion || 1}`}
         action={<StatusBadge label={submissionStatusLabel(submission.status)} />}
       />
 

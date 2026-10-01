@@ -4,6 +4,7 @@ const contributorNav = [
   { to: 'dashboard', label: 'Dashboard', end: true },
   { to: 'jobs', label: 'My Jobs' },
   { to: 'submissions', label: 'Submissions' },
+  { to: 'submit-resource', label: 'Topic Resource' },
 ];
 
 export function ContributorLayout() {

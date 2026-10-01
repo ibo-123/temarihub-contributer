@@ -51,6 +51,45 @@ function blankRow(fields: TemplateField[]) {
   return Object.fromEntries(fields.map((field) => [field.name, ""]));
 }
 
+function groupFields(fields: TemplateField[]) {
+  const isQuestionTemplate = fields.some((f) =>
+    ['question', 'stem', 'prompt', 'option_a', 'choices', 'correct_answer'].some((k) =>
+      f.name.toLowerCase().includes(k),
+    ),
+  );
+
+  if (!isQuestionTemplate) {
+    return { isGrouped: false, groups: [{ title: 'Fields', fields, color: 'border-slate-100 bg-slate-50/30' }] };
+  }
+
+  const questionFields: TemplateField[] = [];
+  const answerFields: TemplateField[] = [];
+  const explanationFields: TemplateField[] = [];
+  const metaFields: TemplateField[] = [];
+
+  for (const f of fields) {
+    const n = f.name.toLowerCase();
+    if (['question', 'prompt', 'stem', 'problem', 'body'].some((k) => n.includes(k))) {
+      questionFields.push(f);
+    } else if (['option', 'choice', 'answer', 'correct'].some((k) => n.includes(k))) {
+      answerFields.push(f);
+    } else if (['explanation', 'solution', 'rationale', 'working', 'reason'].some((k) => n.includes(k))) {
+      explanationFields.push(f);
+    } else {
+      metaFields.push(f);
+    }
+  }
+
+  const groups = [
+    { title: 'Question Prompt', fields: questionFields, color: 'border-sky-100 bg-sky-50/40' },
+    { title: 'Answer Choices & Solution Key', fields: answerFields, color: 'border-emerald-100 bg-emerald-50/40' },
+    { title: 'Explanation & Solution Steps', fields: explanationFields, color: 'border-violet-100 bg-violet-50/40' },
+    { title: 'Details & Classification', fields: metaFields, color: 'border-slate-100 bg-slate-50/40' },
+  ].filter((g) => g.fields.length > 0);
+
+  return { isGrouped: true, groups };
+}
+
 function rowsFromSubmission(submission: Submission, quantity: number, fields: TemplateField[]) {
   const sorted = [...submission.items].sort((left, right) => left.order - right.order);
   const rows = sorted.map((item) => {
@@ -508,66 +547,140 @@ export function SubmissionPage() {
                 </button>
 
                 {open ? (
-                  <div className="space-y-5 border-t border-slate-100 px-5 py-6 sm:px-6">
-                    {fields.map((field) => (
-                      <div key={field.name}>
-                        <label
-                          className="block text-xs font-medium uppercase tracking-wide text-slate-500"
-                          htmlFor={`${field.name}-${index}`}
-                        >
-                          {field.label}
-                          {field.required ? (
-                            <span className="ml-1.5 normal-case tracking-normal text-slate-400">
-                              · required
-                            </span>
-                          ) : null}
-                        </label>
-                        {field.description ? (
-                          <p className="mt-0.5 text-xs text-slate-400">{field.description}</p>
-                        ) : null}
-                        <div className="mt-2">
-                          {field.type === "textarea" ? (
-                            <textarea
-                              id={`${field.name}-${index}`}
-                              rows={3}
-                              placeholder={field.placeholder}
-                              value={row[field.name] ?? ""}
-                              onChange={(event) =>
-                                updateCell(index, field.name, event.target.value)
-                              }
-                              className={`${inputClass} !rounded-2xl`}
-                            />
-                          ) : field.type === "select" ? (
-                            <select
-                              id={`${field.name}-${index}`}
-                              value={row[field.name] ?? ""}
-                              onChange={(event) =>
-                                updateCell(index, field.name, event.target.value)
-                              }
-                              className={`${inputClass} !rounded-2xl`}
-                            >
-                              <option value="">Select</option>
-                              {field.options.map((option) => (
-                                <option key={option} value={option}>
-                                  {option}
-                                </option>
+                  <div className="space-y-6 border-t border-slate-100 px-5 py-6 sm:px-6">
+                    {(() => {
+                      const { isGrouped, groups } = groupFields(fields);
+                      if (isGrouped) {
+                        return groups.map((group) => (
+                          <div key={group.title} className={`rounded-2xl border p-5 ${group.color}`}>
+                            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 mb-4">
+                              {group.title}
+                            </h4>
+                            <div className="space-y-4">
+                              {group.fields.map((field) => (
+                                <div key={field.name}>
+                                  <label
+                                    className="block text-xs font-medium uppercase tracking-wide text-slate-600"
+                                    htmlFor={`${field.name}-${index}`}
+                                  >
+                                    {field.label}
+                                    {field.required ? (
+                                      <span className="ml-1.5 normal-case tracking-normal text-rose-500 font-semibold">
+                                        * required
+                                      </span>
+                                    ) : null}
+                                  </label>
+                                  {field.description ? (
+                                    <p className="mt-0.5 text-xs text-slate-400">{field.description}</p>
+                                  ) : null}
+                                  <div className="mt-1.5">
+                                    {field.type === "textarea" ? (
+                                      <textarea
+                                        id={`${field.name}-${index}`}
+                                        rows={3}
+                                        placeholder={field.placeholder}
+                                        value={row[field.name] ?? ""}
+                                        onChange={(event) =>
+                                          updateCell(index, field.name, event.target.value)
+                                        }
+                                        className={`${inputClass} !rounded-xl bg-white`}
+                                      />
+                                    ) : field.type === "select" ? (
+                                      <select
+                                        id={`${field.name}-${index}`}
+                                        value={row[field.name] ?? ""}
+                                        onChange={(event) =>
+                                          updateCell(index, field.name, event.target.value)
+                                        }
+                                        className={`${inputClass} !rounded-xl bg-white`}
+                                      >
+                                        <option value="">Select option…</option>
+                                        {field.options.map((option) => (
+                                          <option key={option} value={option}>
+                                            {option}
+                                          </option>
+                                        ))}
+                                      </select>
+                                    ) : (
+                                      <input
+                                        id={`${field.name}-${index}`}
+                                        type={field.type === "number" ? "number" : "text"}
+                                        placeholder={field.placeholder}
+                                        value={row[field.name] ?? ""}
+                                        onChange={(event) =>
+                                          updateCell(index, field.name, event.target.value)
+                                        }
+                                        className={`${inputClass} !rounded-xl bg-white`}
+                                      />
+                                    )}
+                                  </div>
+                                </div>
                               ))}
-                            </select>
-                          ) : (
-                            <input
-                              id={`${field.name}-${index}`}
-                              type={field.type === "number" ? "number" : "text"}
-                              placeholder={field.placeholder}
-                              value={row[field.name] ?? ""}
-                              onChange={(event) =>
-                                updateCell(index, field.name, event.target.value)
-                              }
-                              className={`${inputClass} !rounded-2xl`}
-                            />
-                          )}
+                            </div>
+                          </div>
+                        ));
+                      }
+
+                      return fields.map((field) => (
+                        <div key={field.name}>
+                          <label
+                            className="block text-xs font-medium uppercase tracking-wide text-slate-500"
+                            htmlFor={`${field.name}-${index}`}
+                          >
+                            {field.label}
+                            {field.required ? (
+                              <span className="ml-1.5 normal-case tracking-normal text-slate-400">
+                                · required
+                              </span>
+                            ) : null}
+                          </label>
+                          {field.description ? (
+                            <p className="mt-0.5 text-xs text-slate-400">{field.description}</p>
+                          ) : null}
+                          <div className="mt-2">
+                            {field.type === "textarea" ? (
+                              <textarea
+                                id={`${field.name}-${index}`}
+                                rows={3}
+                                placeholder={field.placeholder}
+                                value={row[field.name] ?? ""}
+                                onChange={(event) =>
+                                  updateCell(index, field.name, event.target.value)
+                                }
+                                className={`${inputClass} !rounded-2xl`}
+                              />
+                            ) : field.type === "select" ? (
+                              <select
+                                id={`${field.name}-${index}`}
+                                value={row[field.name] ?? ""}
+                                onChange={(event) =>
+                                  updateCell(index, field.name, event.target.value)
+                                }
+                                className={`${inputClass} !rounded-2xl`}
+                              >
+                                <option value="">Select</option>
+                                {field.options.map((option) => (
+                                  <option key={option} value={option}>
+                                    {option}
+                                  </option>
+                                ))}
+                              </select>
+                            ) : (
+                              <input
+                                id={`${field.name}-${index}`}
+                                type={field.type === "number" ? "number" : "text"}
+                                placeholder={field.placeholder}
+                                value={row[field.name] ?? ""}
+                                onChange={(event) =>
+                                  updateCell(index, field.name, event.target.value)
+                                }
+                                className={`${inputClass} !rounded-2xl`}
+                              />
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ));
+                    })()}
                   </div>
                 ) : null}
               </section>

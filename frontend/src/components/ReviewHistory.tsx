@@ -54,7 +54,9 @@ export function VersionHistory({ submission }: { submission: Submission }) {
     return null;
   }
 
-  const fields = [...submission.template.fields].sort((left, right) => left.order - right.order);
+  const fields = submission.template?.fields
+    ? [...submission.template.fields].sort((left, right) => left.order - right.order)
+    : [];
 
   return (
     <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -74,19 +76,45 @@ export function VersionHistory({ submission }: { submission: Submission }) {
                 <span className="ml-2 font-normal text-slate-500">{formatTimestamp(version.submittedAt)}</span>
               </summary>
               <div className="mt-3 space-y-3">
-                {version.items.map((item) => (
-                  <div key={item.order} className="rounded-md bg-slate-50 px-3 py-2">
-                    <p className="text-xs font-medium text-slate-500">Item {item.order}</p>
-                    <dl className="mt-2 grid gap-2 sm:grid-cols-2">
-                      {fields.map((field) => (
-                        <div key={field.name}>
-                          <dt className="text-xs text-slate-500">{field.label}</dt>
-                          <dd className="text-sm text-slate-900">{displayValue(item.values[field.name])}</dd>
-                        </div>
-                      ))}
-                    </dl>
+                {version.topicResource ? (
+                  <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-3 text-xs">
+                    <div className="font-semibold text-slate-900">{version.topicResource.resourceName}</div>
+                    <div className="mt-1 text-slate-600">
+                      {version.topicResource.subject} · {version.topicResource.topic} · Pages {version.topicResource.pageFrom}–{version.topicResource.pageTo}
+                    </div>
+                    {version.topicResource.prerequisites && version.topicResource.prerequisites.length > 0 && (
+                      <div className="mt-1.5 flex flex-wrap gap-1">
+                        <span className="text-slate-500 font-medium">Prerequisites:</span>
+                        {version.topicResource.prerequisites.map((p) => (
+                          <span key={p} className="rounded bg-white px-1.5 py-0.5 border border-slate-200 text-[11px] text-slate-700">
+                            {p}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {version.topicResource.normalizedContent && (
+                      <div className="mt-2 text-slate-700 whitespace-pre-wrap font-mono text-[11px] bg-white rounded p-2 border border-slate-200 max-h-40 overflow-y-auto">
+                        {version.topicResource.normalizedContent}
+                      </div>
+                    )}
                   </div>
-                ))}
+                ) : null}
+
+                {version.items && version.items.length > 0 ? (
+                  version.items.map((item) => (
+                    <div key={item.order} className="rounded-md bg-slate-50 px-3 py-2">
+                      <p className="text-xs font-medium text-slate-500">Item {item.order}</p>
+                      <dl className="mt-2 grid gap-2 sm:grid-cols-2">
+                        {fields.map((field) => (
+                          <div key={field.name}>
+                            <dt className="text-xs text-slate-500">{field.label}</dt>
+                            <dd className="text-sm text-slate-900">{displayValue(item.values[field.name])}</dd>
+                          </div>
+                        ))}
+                      </dl>
+                    </div>
+                  ))
+                ) : null}
                 {version.notes ? <p className="text-sm text-slate-700">Notes: {version.notes}</p> : null}
                 {version.files.length > 0 ? (
                   <p className="text-sm text-slate-600">

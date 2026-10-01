@@ -64,8 +64,22 @@ function toAdminJob(job) {
   };
 }
 
-// Contributors get a clean view: no creator, no contributor references.
-function toContributorJob(job) {
+// Contributors get a clean view with submission progress and job details
+function toContributorJob(job, submission = null) {
+  let submittedCount = 0;
+  if (submission) {
+    if (['SUBMITTED', 'UNDER_REVIEW', 'APPROVED', 'CONTENT_READY'].includes(submission.status)) {
+      submittedCount = job.quantity;
+    } else if (submission.items && submission.items.length > 0) {
+      submittedCount = submission.items.filter((item) => {
+        if (!item.values || typeof item.values !== 'object') return false;
+        return Object.values(item.values).some((v) => v !== null && v !== undefined && String(v).trim() !== '');
+      }).length;
+    } else if (submission.submissionType === 'TOPIC_RESOURCE') {
+      submittedCount = 1;
+    }
+  }
+
   return {
     id: job._id,
     title: job.title,
@@ -79,6 +93,15 @@ function toContributorJob(job) {
     instructions: job.instructions,
     status: job.status,
     template: templateSummary(job, true),
+    jobType: job.templateSnapshot?.type || 'RESOURCE',
+    assignedDate: job.createdAt,
+    submissionProgress: {
+      required: job.quantity,
+      submitted: submittedCount,
+      percentage: Math.min(100, Math.round((submittedCount / (job.quantity || 1)) * 100)),
+      submissionStatus: submission ? submission.status : null,
+      submissionId: submission ? submission._id : null,
+    },
     createdAt: job.createdAt,
     updatedAt: job.updatedAt,
   };
@@ -495,7 +518,11 @@ async function listJobsForContributor(user) {
     status: { $in: CONTRIBUTOR_VISIBLE_STATUSES },
   }).sort({ deadline: 1 });
 
-  return jobs.map(toContributorJob);
+  const jobIds = jobs.map((j) => j._id);
+  const submissions = await Submission.find({ job: { $in: jobIds } }).lean();
+  const submissionMap = new Map(submissions.map((s) => [String(s.job), s]));
+
+  return jobs.map((job) => toContributorJob(job, submissionMap.get(String(job._id))));
 }
 
 async function getJobForContributor(user, id) {
@@ -511,7 +538,8 @@ async function getJobForContributor(user, id) {
     throw new AppError(404, 'Job not found');
   }
 
-  return toContributorJob(job);
+  const submission = await Submission.findOne({ job: job._id }).lean();
+  return toContributorJob(job, submission);
 }
 
 module.exports = {

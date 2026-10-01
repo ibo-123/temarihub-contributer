@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { StatusBadge } from "../../components/StatusBadge";
 import { Alert, EmptyState, LoadingState, PageHeader } from "../../components/ui";
-import { subjectLabel } from "../../constants/contributors";
+import { subjectLabel, type Subject } from "../../constants/contributors";
 import { submissionStatusLabel } from "../../constants/templates";
 import { primaryButtonClass, secondaryButtonClass } from "../../components/formStyles";
 import {
@@ -90,7 +90,9 @@ export function ContentReadyPage() {
 
   const subjects = [
     ...new Set(
-      submissions.map((submission) => submission.job.subject ?? submission.template.subject),
+      submissions
+        .map((submission) => submission.topicResource?.subject ?? submission.job?.subject ?? submission.template?.subject)
+        .filter((sub): sub is Subject => Boolean(sub)),
     ),
   ];
 
@@ -130,10 +132,12 @@ export function ContentReadyPage() {
           <div className="divide-y divide-slate-100/80">
             {subjects.map((subject) => {
               const inSubject = submissions.filter(
-                (submission) => (submission.job.subject ?? submission.template.subject) === subject,
+                (submission) => (submission.topicResource?.subject ?? submission.job?.subject ?? submission.template?.subject) === subject,
               );
               const topics = [
-                ...new Set(inSubject.map((submission) => submission.job.topic || "No topic")),
+                ...new Set(
+                  inSubject.map((submission) => submission.topicResource?.topic || submission.job?.topic || "No topic"),
+                ),
               ];
 
               return (
@@ -160,7 +164,7 @@ export function ContentReadyPage() {
                   <div className="space-y-4">
                     {topics.map((topic) => {
                       const items = inSubject.filter(
-                        (submission) => (submission.job.topic || "No topic") === topic,
+                        (submission) => (submission.topicResource?.topic || submission.job?.topic || "No topic") === topic,
                       );
 
                       return (
@@ -179,7 +183,7 @@ export function ContentReadyPage() {
                                     to={`/admin/submissions/${submission.id}`}
                                     className="font-medium text-slate-900 transition-colors hover:text-slate-700"
                                   >
-                                    {submission.job.title ?? "Submission"}
+                                    {submission.topicResource?.resourceName || submission.job?.title || "Submission"}
                                   </Link>
                                   <p className="mt-1 text-xs text-slate-500">
                                     {submission.contributor?.name ?? "Contributor"}

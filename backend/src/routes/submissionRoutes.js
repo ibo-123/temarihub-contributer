@@ -2,6 +2,9 @@ const express = require('express');
 const {
   updateSubmission,
   submitSubmission,
+  createTopicResource,
+  updateTopicResource,
+  reorderFiles,
   addFiles,
   removeFile,
   downloadFile,
@@ -19,9 +22,12 @@ const { upload } = require('../middleware/uploadMiddleware');
 const router = express.Router();
 
 router.get('/', authenticate, authorize('ADMIN'), listSubmissions);
+router.post('/topic-resource', authenticate, authorize('CONTRIBUTOR'), upload.array('files'), createTopicResource);
 router.get('/:id/files/:fileId', authenticate, authorize('ADMIN', 'CONTRIBUTOR'), downloadFile);
 router.get('/:id/export', authenticate, authorize('ADMIN'), exportSubmission);
-router.get('/:id', authenticate, authorize('ADMIN'), getSubmission);
+router.get('/:id', authenticate, authorize('ADMIN', 'CONTRIBUTOR'), getSubmission);
+router.put('/:id/topic-resource', authenticate, authorize('CONTRIBUTOR'), upload.array('files'), updateTopicResource);
+router.post('/:id/reorder-files', authenticate, authorize('CONTRIBUTOR'), reorderFiles);
 router.put('/:id', authenticate, authorize('CONTRIBUTOR'), updateSubmission);
 router.post('/:id/submit', authenticate, authorize('CONTRIBUTOR'), submitSubmission);
 router.post('/:id/resubmit', authenticate, authorize('CONTRIBUTOR'), resubmitSubmission);

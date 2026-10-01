@@ -49,11 +49,12 @@ async function notifyJobAssigned(contributorId, job) {
 
 async function notifySubmissionReceived({ adminId, contributorName, job, submissionId, resubmitted }) {
   const verb = resubmitted ? 'resubmitted' : 'submitted';
+  const title = job?.title || 'Topic Resource';
   await createNotification({
     recipient: adminId,
     type: 'SUBMISSION_RECEIVED',
     title: resubmitted ? 'Submission Updated' : 'New Submission',
-    message: `${contributorName} ${verb} the job: ${job.title}.`,
+    message: `${contributorName} ${verb} the job: ${title}.`,
     relatedEntityType: 'Submission',
     relatedEntityId: submissionId,
     link: `/admin/submissions/${submissionId}`,
@@ -61,7 +62,7 @@ async function notifySubmissionReceived({ adminId, contributorName, job, submiss
 }
 
 async function submissionRecipients(job) {
-  if (job.createdBy) {
+  if (job?.createdBy) {
     const owner = await User.findById(job.createdBy).select('role isActive');
     if (owner && owner.role === 'ADMIN' && owner.isActive !== false) {
       return [owner._id];
@@ -85,26 +86,30 @@ async function notifyAdminsOfSubmission(job, submissionId, contributorName, { re
 
 async function notifyRevisionRequested(contributorId, job, submissionId, feedback) {
   const detail = feedback ? ` ${feedback}` : '';
+  const title = job?.title || 'Topic Resource';
+  const link = job?._id ? `/contributor/jobs/${job._id}/submission` : `/contributor/resources/${submissionId}`;
   await createNotification({
     recipient: contributorId,
     type: 'REVISION_REQUESTED',
     title: 'Revision Requested',
-    message: `Revision requested for: ${job.title}.${detail}`,
+    message: `Revision requested for: ${title}.${detail}`,
     relatedEntityType: 'Submission',
     relatedEntityId: submissionId,
-    link: `/contributor/jobs/${job._id}/submission`,
+    link,
   });
 }
 
 async function notifySubmissionApproved(contributorId, job, submissionId) {
+  const title = job?.title || 'Topic Resource';
+  const link = job?._id ? `/contributor/jobs/${job._id}/submission` : `/contributor/resources/${submissionId}`;
   await createNotification({
     recipient: contributorId,
     type: 'SUBMISSION_APPROVED',
     title: 'Submission Approved',
-    message: `Your submission for ${job.title} has been approved.`,
+    message: `Your submission for ${title} has been approved.`,
     relatedEntityType: 'Submission',
     relatedEntityId: submissionId,
-    link: `/contributor/jobs/${job._id}/submission`,
+    link,
   });
 }
 

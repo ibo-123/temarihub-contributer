@@ -63,7 +63,11 @@ const listSubmissions = asyncHandler(async (req, res) => {
 });
 
 const getSubmission = asyncHandler(async (req, res) => {
-  const submission = await submissionService.getForAdmin(req.params.id);
+  if (req.user.role === 'ADMIN') {
+    const submission = await submissionService.getForAdmin(req.params.id);
+    return res.json({ success: true, data: { submission } });
+  }
+  const submission = await submissionService.getForContributor(req.user, req.params.id);
   res.json({ success: true, data: { submission } });
 });
 
@@ -109,9 +113,40 @@ const exportContentReady = asyncHandler(async (req, res) => {
   res.send(JSON.stringify(payload, null, 2));
 });
 
+const createTopicResource = asyncHandler(async (req, res) => {
+  const submission = await submissionService.createTopicResourceSubmission(
+    req.user,
+    req.body,
+    req.files || [],
+  );
+  res.status(201).json({ success: true, data: { submission } });
+});
+
+const updateTopicResource = asyncHandler(async (req, res) => {
+  const submission = await submissionService.updateTopicResourceSubmission(
+    req.user,
+    req.params.id,
+    req.body,
+    req.files || [],
+  );
+  res.json({ success: true, data: { submission } });
+});
+
+const reorderFiles = asyncHandler(async (req, res) => {
+  const submission = await submissionService.reorderSubmissionFiles(
+    req.user,
+    req.params.id,
+    req.body.fileIds || [],
+  );
+  res.json({ success: true, data: { submission } });
+});
+
 module.exports = {
   getMySubmission,
   createSubmission,
+  createTopicResource,
+  updateTopicResource,
+  reorderFiles,
   listMySubmissions,
   updateSubmission,
   submitSubmission,

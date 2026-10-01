@@ -1,50 +1,71 @@
-import { useEffect } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { ApiRequestError, apiRequest } from "../../services/api";
-
-const actions = [
-  {
-    to: "/contributor/jobs",
-    title: "My jobs",
-    text: "Open an assigned job to see the template, quantity, and deadline.",
-    accent: "from-sky-100 to-sky-50",
-    icon: "📋",
-  },
-  {
-    to: "/contributor/submissions",
-    title: "Submissions",
-    text: "Continue a draft, revise requested changes, or check the status of work you already sent.",
-    accent: "from-violet-100 to-violet-50",
-    icon: "📝",
-  },
-];
+import { StatusBadge } from "../../components/StatusBadge";
+import { ErrorState, LoadingState } from "../../components/ui";
+import { formatDeadline, jobStatusLabel } from "../../constants/jobs";
+import { subjectLabel } from "../../constants/contributors";
+import type { ContributorDashboardData } from "../../types";
 
 export function ContributorDashboardPage() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [data, setData] = useState<ContributorDashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const fetchDashboard = useCallback(() => {
+    setLoading(true);
+    setError(null);
     let cancelled = false;
 
-    apiRequest("/api/contributor/dashboard").catch((err: unknown) => {
-      if (cancelled) {
-        return;
-      }
-
-      if (err instanceof ApiRequestError && (err.status === 401 || err.status === 403)) {
-        logout();
-        navigate("/login", { replace: true });
-      }
-    });
+    apiRequest<ContributorDashboardData>("/api/contributor/dashboard")
+      .then((res) => {
+        if (!cancelled) {
+          setData(res);
+        }
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        if (err instanceof ApiRequestError && (err.status === 401 || err.status === 403)) {
+          logout();
+          navigate("/login", { replace: true });
+          return;
+        }
+        setError(err instanceof Error ? err.message : "Unable to load dashboard data");
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      });
 
     return () => {
       cancelled = true;
     };
   }, [logout, navigate]);
 
+  useEffect(() => {
+    return fetchDashboard();
+  }, [fetchDashboard]);
+
+  if (loading) {
+    return (
+      <div className="rounded-3xl border border-white/60 bg-white/70 p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-sm">
+        <LoadingState>Loading dashboard metrics…</LoadingState>
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return <ErrorState message={error || "Could not load dashboard metrics"} onRetry={fetchDashboard} />;
+  }
+
+  const { metrics, upcomingDeadlines, recentActivity } = data;
+
   return (
-    <div className="relative">
+    <div className="relative space-y-6">
       {/* Ambient background glow */}
       <div
         aria-hidden="true"
@@ -53,56 +74,212 @@ export function ContributorDashboardPage() {
 
       {/* Header */}
       <div className="rounded-3xl border border-white/60 bg-white/70 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-sm sm:p-8">
-        <span className="inline-flex items-center rounded-full bg-slate-900/5 px-3 py-1 text-xs font-medium tracking-wide text-slate-600">
-          Contributor
-        </span>
-        <h2 className="mt-3 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
-          Welcome back, {user?.name}
-        </h2>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-          Fill every required field, save a draft whenever you stop, and submit only when the full
-          quantity is ready. If a reviewer asks for changes, edit that submission and resubmit.
-        </p>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <span className="inline-flex items-center rounded-full bg-slate-900/5 px-3 py-1 text-xs font-medium tracking-wide text-slate-600">
+              Contributor Dashboard
+            </span>
+            <h2 className="mt-3 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
+              Welcome back, {user?.name}
+            </h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+              Track your assigned jobs, continue drafts, review requested revisions, and submit topic resources.
+            </p>
+          </div>
+          <Link
+            to="/contributor/submit-resource"
+            className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-5 py-3 text-sm font-medium text-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-md"
+          >
+            <span>+</span> Submit Topic Resource
+          </Link>
+        </div>
       </div>
 
-      {/* Actions grid */}
-      <div className="mt-6 grid gap-4 sm:grid-cols-2">
-        {actions.map((action) => (
-          <Link
-            key={action.to}
-            to={action.to}
-            className="group relative overflow-hidden rounded-2xl border border-slate-100 bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-all duration-300 hover:-translate-y-0.5 hover:border-transparent hover:shadow-[0_12px_40px_-12px_rgba(15,23,42,0.15)] focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
-          >
-            {/* Subtle gradient wash on hover */}
-            <div
-              aria-hidden="true"
-              className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${action.accent} opacity-0 transition-opacity duration-300 group-hover:opacity-100`}
-            />
-
-            <div className="relative flex items-start gap-4">
-              <div
-                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${action.accent} text-lg shadow-inner ring-1 ring-white/60 transition-transform duration-300 group-hover:scale-105`}
-                aria-hidden="true"
-              >
-                {action.icon}
-              </div>
-              <div className="min-w-0">
-                <h3 className="font-medium text-slate-900">{action.title}</h3>
-                <p className="mt-1.5 text-sm leading-6 text-slate-500 transition-colors group-hover:text-slate-600">
-                  {action.text}
-                </p>
-              </div>
-            </div>
-
-            {/* Arrow hint */}
-            <span
-              aria-hidden="true"
-              className="absolute right-5 top-5 text-slate-300 opacity-0 transition-all duration-300 group-hover:translate-x-0.5 group-hover:text-slate-500 group-hover:opacity-100"
+      {/* Primary Metrics Grid */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Active Jobs */}
+        <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition hover:shadow-md">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Active Jobs</span>
+            <span className="text-xl">📋</span>
+          </div>
+          <p className="mt-3 text-3xl font-bold tracking-tight text-slate-900">{metrics.activeJobs}</p>
+          <div className="mt-4 border-t border-slate-100 pt-3">
+            <Link
+              to="/contributor/jobs"
+              className="inline-flex items-center text-xs font-semibold text-sky-600 transition hover:text-sky-700"
             >
-              →
+              View Jobs →
+            </Link>
+          </div>
+        </div>
+
+        {/* Pending Submissions */}
+        <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition hover:shadow-md">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Pending Review</span>
+            <span className="text-xl">⏳</span>
+          </div>
+          <p className="mt-3 text-3xl font-bold tracking-tight text-slate-900">{metrics.pendingSubmissions}</p>
+          <div className="mt-4 border-t border-slate-100 pt-3">
+            <Link
+              to="/contributor/submissions"
+              className="inline-flex items-center text-xs font-semibold text-sky-600 transition hover:text-sky-700"
+            >
+              View Submissions →
+            </Link>
+          </div>
+        </div>
+
+        {/* Submissions Requiring Revision */}
+        <div
+          className={`rounded-2xl border p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition hover:shadow-md ${
+            metrics.submissionsRequiringRevision > 0
+              ? "border-amber-200 bg-amber-50/50"
+              : "border-slate-100 bg-white"
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span
+              className={`text-xs font-semibold uppercase tracking-wider ${
+                metrics.submissionsRequiringRevision > 0 ? "text-amber-800" : "text-slate-400"
+              }`}
+            >
+              Needs Revision
             </span>
-          </Link>
-        ))}
+            <span className="text-xl">{metrics.submissionsRequiringRevision > 0 ? "⚠️" : "📝"}</span>
+          </div>
+          <p
+            className={`mt-3 text-3xl font-bold tracking-tight ${
+              metrics.submissionsRequiringRevision > 0 ? "text-amber-900" : "text-slate-900"
+            }`}
+          >
+            {metrics.submissionsRequiringRevision}
+          </p>
+          <div className="mt-4 border-t border-slate-100 pt-3">
+            <Link
+              to="/contributor/submissions"
+              className={`inline-flex items-center text-xs font-semibold transition ${
+                metrics.submissionsRequiringRevision > 0
+                  ? "text-amber-900 hover:underline"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              Review Feedback →
+            </Link>
+          </div>
+        </div>
+
+        {/* Approved Submissions */}
+        <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition hover:shadow-md">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Approved</span>
+            <span className="text-xl">✅</span>
+          </div>
+          <p className="mt-3 text-3xl font-bold tracking-tight text-emerald-600">{metrics.approvedSubmissions}</p>
+          <div className="mt-4 border-t border-slate-100 pt-3">
+            <Link
+              to="/contributor/submissions"
+              className="inline-flex items-center text-xs font-semibold text-emerald-700 transition hover:text-emerald-800"
+            >
+              View Approved →
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content Split: Upcoming Deadlines & Recent Activity */}
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* Upcoming Deadlines (2 cols) */}
+        <section className="rounded-3xl border border-white/60 bg-white/70 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-sm lg:col-span-2">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+            <div>
+              <h3 className="text-lg font-semibold text-slate-900">Upcoming Deadlines</h3>
+              <p className="mt-0.5 text-xs text-slate-500">Your assigned and active work sorted by nearest due date.</p>
+            </div>
+            <Link
+              to="/contributor/jobs"
+              className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:border-slate-300 hover:text-slate-900"
+            >
+              View All Jobs
+            </Link>
+          </div>
+
+          <div className="mt-4 space-y-3">
+            {upcomingDeadlines.length === 0 ? (
+              <div className="py-8 text-center text-sm text-slate-500">
+                <span className="mb-2 block text-2xl">🎉</span>
+                No upcoming deadlines. You are all caught up!
+              </div>
+            ) : (
+              upcomingDeadlines.map((job) => (
+                <div
+                  key={job.id}
+                  className="flex flex-col justify-between gap-3 rounded-2xl border border-slate-100 bg-white p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-200 hover:shadow-sm sm:flex-row sm:items-center"
+                >
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-semibold text-slate-900 hover:text-slate-700">
+                        {job.title}
+                      </span>
+                      <StatusBadge label={jobStatusLabel(job.status)} />
+                    </div>
+                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
+                      <span>{subjectLabel(job.subject)}</span>
+                      <span>•</span>
+                      <span className="truncate max-w-[14rem]">{job.topic}</span>
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 items-center justify-between gap-3 sm:justify-end">
+                    <div className="text-left sm:text-right">
+                      <p className="text-xs text-slate-400">Deadline</p>
+                      <p className="text-xs font-medium text-slate-700">{formatDeadline(job.deadline)}</p>
+                    </div>
+                    <Link
+                      to={`/contributor/jobs/${job.id}`}
+                      className="rounded-full bg-slate-900 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-slate-800"
+                    >
+                      Open Job
+                    </Link>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </section>
+
+        {/* Recent Activity (1 col) */}
+        <section className="rounded-3xl border border-white/60 bg-white/70 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-sm">
+          <div className="border-b border-slate-100 pb-4">
+            <h3 className="text-lg font-semibold text-slate-900">Recent Activity</h3>
+            <p className="mt-0.5 text-xs text-slate-500">Latest updates on your contributions and reviews.</p>
+          </div>
+
+          <div className="mt-4 space-y-4">
+            {recentActivity.length === 0 ? (
+              <div className="py-8 text-center text-sm text-slate-500">
+                No recent activity recorded yet.
+              </div>
+            ) : (
+              recentActivity.map((act) => (
+                <div key={act.id} className="flex gap-3 text-xs">
+                  <div className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-sky-500 ring-4 ring-sky-100" />
+                  <div className="min-w-0">
+                    <p className="font-medium text-slate-800 leading-snug">{act.description}</p>
+                    <p className="mt-1 text-[11px] text-slate-400">
+                      {new Date(act.createdAt).toLocaleDateString(undefined, {
+                        month: "short",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </p>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </section>
       </div>
     </div>
   );

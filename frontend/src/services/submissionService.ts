@@ -106,3 +106,24 @@ export async function downloadContentBundle() {
   const blob = await apiDownload('/api/content/export');
   saveBlob(blob, 'content-ready-export.json');
 }
+
+export function createTopicResource(formData: FormData) {
+  return apiRequest<{ submission: Submission }>('/api/submissions/topic-resource', {
+    method: 'POST',
+    body: formData,
+  });
+}
+
+export function updateTopicResource(id: string, formData: FormData) {
+  return apiRequest<{ submission: Submission }>(`/api/submissions/${id}/topic-resource`, {
+    method: 'PUT',
+    body: formData,
+  });
+}
+
+export function reorderSubmissionFiles(id: string, fileIds: string[]) {
+  return apiRequest<{ submission: Submission }>(`/api/submissions/${id}/reorder-files`, {
+    method: 'POST',
+    body: JSON.stringify({ fileIds }),
+  });
+}
